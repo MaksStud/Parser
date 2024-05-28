@@ -11,7 +11,7 @@ class Data_parsing:
         }
 
     @staticmethod
-    def __reading_the_number_of_pages(content) -> int:
+    def reading_the_number_of_pages(content) -> int:
         """
         :param content: The text that returned the request
         :return: number of all pages
@@ -35,6 +35,7 @@ class Data_parsing:
 
     def link_to_all_pages(self, url: str) -> list:
         """
+        Reads the largest page number and generates links to all pages and returns a list of them
         :param url: Link to the page
         :return: List of links to all pages
         """
@@ -45,7 +46,7 @@ class Data_parsing:
         if request.status_code == 200:
             content = request.text
 
-            max_page = self.__reading_the_number_of_pages(content)
+            max_page = self.reading_the_number_of_pages(content)
 
         for i in range(max_page):
             link_list.append(url + f"&page={i + 1}")
