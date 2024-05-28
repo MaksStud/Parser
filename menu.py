@@ -1,7 +1,7 @@
-import functions_for_parsyng as fun
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox as mb
+from services import Write_in_exel, Data_parsing
 
 
 def choose_file():
@@ -11,21 +11,21 @@ def choose_file():
 
 def start():
     url_text = url_from_user.get()
+    parser = Data_parsing()
     if url_text != '':
         if checkbox_var.get():
             mb.showinfo(title="Початок", message="Процес почато")
-            url_subpages_list = fun.number_of_all_subpages(url_text)
-            links_to_products = fun.links_to_products_from_all_pages(url_subpages_list)
-            product_data = fun.read_product_data(links_to_products)
-            fun.write_in_exel(file_path, 'Export Products Sheet', product_data)
-
+            url_subpages_list = parser.link_to_all_pages(url_text)
+            links_to_products = parser.links_to_products_from_all_pages(url_subpages_list)
+            product_data = parser.read_product_data(links_to_products)
+            Write_in_exel.write(file_path, 'Export Products Sheet', product_data)
             mb.showinfo(title="Успіх", message="Процес завершино")
             root.destroy()
         else:
             mb.showinfo(title="Початок", message="Процес почато")
-            links_to_products = fun.links_to_products(url_text)
-            product_data = fun.read_product_data(links_to_products)
-            fun.write_in_exel(file_path, 'Export Products Sheet', product_data)
+            links_to_products = parser.links_to_products(url_text)
+            product_data = parser.read_product_data(links_to_products)
+            Write_in_exel.write(file_path, 'Export Products Sheet', product_data)
             mb.showinfo(title="Успіх", message="Процес завершино")
             root.destroy()
     elif url_text == '':
