@@ -103,7 +103,7 @@ class Data_parsing:
         return link_list
 
     @staticmethod
-    def __get_product_name(content) -> str:
+    def get_product_name(content) -> str:
         """
         :param content: The text that returned the request
         :return: string with the product name
@@ -115,7 +115,7 @@ class Data_parsing:
             return name
 
     @staticmethod
-    def __get_product_price(content) -> str:
+    def get_product_price(content) -> str:
         """
         :param content: The text that returned the request
         :return: string with the product price
@@ -129,7 +129,7 @@ class Data_parsing:
                 return price_value
 
     @staticmethod
-    def __get_product_photo(content) -> str:
+    def get_product_photo(content) -> str:
         """
         :param content: The text that returned the request
         :return: a string with a link to a product photo
@@ -141,7 +141,7 @@ class Data_parsing:
             return img_url
 
     @staticmethod
-    def __get_product_description(content) -> str:
+    def get_product_description(content) -> str:
         """
         :param content: The text that returned the request
         :return: a string from the product description
@@ -153,6 +153,26 @@ class Data_parsing:
             descriptions_text = '; '.join([li.get_text(strip=True) for li in list_items])
             return descriptions_text
 
+    @staticmethod
+    def get_product_article(content):
+        soup = BeautifulSoup(content, 'html.parser')
+        articles = soup.find_all('div', class_="model")
+        for art in articles:
+            return art.get_text().replace('Артикул:', '')
+
+    @staticmethod
+    def get_product_in_stock(content):
+        soup = BeautifulSoup(content, 'html.parser')
+        stocks = soup.find_all('div', class_="spec-wrapper")
+        for stock in stocks:
+            stock_status = stock.find('div', class_='stock hidden-xs hidden-sm nospesh')
+            if stock_status:
+                in_stock = stock_status.get_text(strip=True)
+                if in_stock == 'В наявності':
+                    return '+'
+                else:
+                    return '-'
+
     def read_product_data(self, links_list: list):
         """
         :param links_list: List of links to products
@@ -160,22 +180,29 @@ class Data_parsing:
         """
         list_of_products_data = []
         for i in links_list:
+            print(i)
             list_of_product_data = []
             request = requests.get(i, headers=self.headers)
             if request.status_code == 200:
                 content = request.text
 
                 # getting a product name
-                list_of_product_data.append(self.__get_product_name(content))
+                list_of_product_data.append(self.get_product_name(content))
 
                 # getting the price of the product
-                list_of_product_data.append(self.__get_product_price(content))
+                list_of_product_data.append(self.get_product_price(content))
 
                 # getting a link to a product photo
-                list_of_product_data.append(self.__get_product_photo(content))
+                list_of_product_data.append(self.get_product_photo(content))
 
                 # getting a product description
-                list_of_product_data.append(self.__get_product_description(content))
+                list_of_product_data.append(self.get_product_description(content))
+
+                # getting a product article
+                list_of_product_data.append(self.get_product_article(content))
+
+                # getting a product stock status
+                list_of_product_data.append((self.get_product_in_stock(content)))
 
                 list_of_products_data.append(list_of_product_data)
         return list_of_products_data
@@ -183,31 +210,30 @@ class Data_parsing:
 
 class Write_in_exel:
     @staticmethod
-    def write(file_path: str, sheet_name: str, data_matrix) -> None:
+    def write(data_matrix) -> None:
         """
         :param file_path: The path to the file in which to write
         :param sheet_name: Name of the page in the file to which you want to write
         :param data_matrix: Double array of product data
         :return: None
         """
+        sheet_name = 'Export Products Sheet'
+
         data_matrix = np.array(data_matrix)
         data_matrix = np.transpose(data_matrix)
         data = {
-            'Название_позиции': data_matrix[0],
-            'Описание': data_matrix[3],
-            'Цена': data_matrix[1],
-            'Ссылка_изображения': data_matrix[2]
+            "Название_позиции": data_matrix[0],
+            "Описание": data_matrix[3],
+            "Тип_товара": ['r' for _ in range(len(data_matrix[0]))],
+            "Цена": data_matrix[1],
+            "Валюта": ['UAH' for _ in range(len(data_matrix[0]))],
+            "Единица_измерения": ['шт.' for _ in range(len(data_matrix[0]))],
+            "Ссылка_изображения": data_matrix[2],
+            "Наличие": data_matrix[5],
+            "Идентификатор_товара": data_matrix[4],
         }
 
-        df_new = pd.DataFrame(data)
+        df = pd.DataFrame(data)
 
-        df_existing = pd.read_excel(file_path, sheet_name=sheet_name)
-
-        for column in df_existing.columns:
-            if column not in df_new.columns:
-                df_new[column] = pd.NA
-
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-
-        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
-            df_combined.to_excel(writer, sheet_name=sheet_name, index=False)
+        with pd.ExcelWriter("Export_Products.xlsx", engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
