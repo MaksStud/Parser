@@ -11,7 +11,7 @@ class Data_parsing:
         }
 
     @staticmethod
-    def reading_the_number_of_pages(content) -> int:
+    def reading_the_number_of_pages(content: str) -> int:
         """
         :param content: The text that returned the request
         :return: number of all pages
@@ -53,7 +53,7 @@ class Data_parsing:
         return link_list
 
     @staticmethod
-    def search_for_a_product_page(content):
+    def search_for_a_product_page(content: str):
         """
         :param content: The text that returned the request
         :return: link to the product page
@@ -103,7 +103,7 @@ class Data_parsing:
         return link_list
 
     @staticmethod
-    def get_product_name(content) -> str:
+    def get_product_name(content: str) -> str:
         """
         :param content: The text that returned the request
         :return: string with the product name
@@ -115,7 +115,7 @@ class Data_parsing:
             return name
 
     @staticmethod
-    def get_product_price(content) -> str:
+    def get_product_price(content: str) -> int:
         """
         :param content: The text that returned the request
         :return: string with the product price
@@ -126,10 +126,10 @@ class Data_parsing:
             price_new = price.find('span', class_='price-new')
             if price_new:
                 price_value = price_new.get_text(strip=True).replace('₴', '').replace(' ', '')
-                return price_value
+                return int(price_value)
 
     @staticmethod
-    def get_product_photo(content) -> str:
+    def get_product_photo(content: str) -> str:
         """
         :param content: The text that returned the request
         :return: a string with a link to a product photo
@@ -141,7 +141,7 @@ class Data_parsing:
             return img_url
 
     @staticmethod
-    def get_product_description(content) -> str:
+    def get_product_description(content: str) -> str:
         """
         :param content: The text that returned the request
         :return: a string from the product description
@@ -154,14 +154,23 @@ class Data_parsing:
             return descriptions_text
 
     @staticmethod
-    def get_product_article(content):
+    def get_product_article(content: str) -> int:
+        '''
+        :param content: The text that returned the request
+        :return: number from the product article
+        '''
         soup = BeautifulSoup(content, 'html.parser')
         articles = soup.find_all('div', class_="model")
         for art in articles:
-            return art.get_text().replace('Артикул:', '')
+            return int(art.get_text().replace('Артикул:', ''))
 
     @staticmethod
-    def get_product_in_stock(content):
+    def get_product_in_stock(content: str) -> str:
+        '''
+        :param content: The text that returned the request
+        :return:
+        + if in stock, - if not in stock
+        '''
         soup = BeautifulSoup(content, 'html.parser')
         stocks = soup.find_all('div', class_="spec-wrapper")
         for stock in stocks:
@@ -180,7 +189,6 @@ class Data_parsing:
         """
         list_of_products_data = []
         for i in links_list:
-            print(i)
             list_of_product_data = []
             request = requests.get(i, headers=self.headers)
             if request.status_code == 200:
