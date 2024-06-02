@@ -115,7 +115,7 @@ class Data_parsing:
             return name
 
     @staticmethod
-    def get_product_price(content: str) -> int:
+    def get_product_price(content: str) -> float:
         """
         :param content: The text that returned the request
         :return: string with the product price
@@ -126,7 +126,7 @@ class Data_parsing:
             price_new = price.find('span', class_='price-new')
             if price_new:
                 price_value = price_new.get_text(strip=True).replace('₴', '').replace(' ', '')
-                return int(price_value)
+                return float(price_value)
 
     @staticmethod
     def get_product_photo(content: str) -> str:
@@ -220,8 +220,6 @@ class Write_in_exel:
     @staticmethod
     def write(data_matrix) -> None:
         """
-        :param file_path: The path to the file in which to write
-        :param sheet_name: Name of the page in the file to which you want to write
         :param data_matrix: Double array of product data
         :return: None
         """
@@ -230,15 +228,15 @@ class Write_in_exel:
         data_matrix = np.array(data_matrix)
         data_matrix = np.transpose(data_matrix)
         data = {
-            "Название_позиции": data_matrix[0],
-            "Описание": data_matrix[3],
-            "Тип_товара": ['r' for _ in range(len(data_matrix[0]))],
-            "Цена": data_matrix[1],
+            "Назва_позиції": data_matrix[0],
+            "Опис": data_matrix[3],
+            "Тип_товару": ['r' for _ in range(len(data_matrix[0]))],
+            "Ціна": data_matrix[1],
             "Валюта": ['UAH' for _ in range(len(data_matrix[0]))],
-            "Единица_измерения": ['шт.' for _ in range(len(data_matrix[0]))],
-            "Ссылка_изображения": data_matrix[2],
-            "Наличие": data_matrix[5],
-            "Идентификатор_товара": data_matrix[4],
+            "Одиниця_виміру": ['шт.' for _ in range(len(data_matrix[0]))],
+            "Посилання_зображення": data_matrix[2],
+            "Наявність": data_matrix[5],
+            "Ідентифікатор_товару": data_matrix[4],
         }
 
         df = pd.DataFrame(data)

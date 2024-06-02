@@ -1,25 +1,30 @@
 import tkinter as tk
 from tkinter import messagebox as mb
 from services import Write_in_exel, Data_parsing
+import threading
+
+
+def parsing(url_text, ):
+    parser = Data_parsing()
+
+    if checkbox_var.get():
+        url_subpages_list = parser.link_to_all_pages(url_text)
+        links_to_products = parser.links_to_products_from_all_pages(url_subpages_list)
+    else:
+        links_to_products = parser.links_to_products(url_text)
+
+    product_data = parser.read_product_data(links_to_products)
+    Write_in_exel.write(product_data)
+
+    mb.showinfo(title="Успіх", message="Процес завершено")
 
 
 def start():
     url_text = url_from_user.get()
-    parser = Data_parsing()
     if url_text != '':
         mb.showinfo(title="Початок", message="Процес почато")
 
-        if checkbox_var.get():
-            url_subpages_list = parser.link_to_all_pages(url_text)
-            links_to_products = parser.links_to_products_from_all_pages(url_subpages_list)
-        else:
-            links_to_products = parser.links_to_products(url_text)
-
-        product_data = parser.read_product_data(links_to_products)
-        Write_in_exel.write(product_data)
-
-        mb.showinfo(title="Успіх", message="Процес завершено")
-        root.destroy()
+        threading.Thread(target=parsing, args=(url_text,)).start()
 
     elif url_text == '':
         mb.showerror(title="Пропущено рядок", message="Поле url має бути заповнене")
