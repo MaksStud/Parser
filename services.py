@@ -169,18 +169,19 @@ class Data_parsing:
         '''
         :param content: The text that returned the request
         :return:
-        + if in stock, - if not in stock
+        + if in stock, - if not in stock or +
         '''
         soup = BeautifulSoup(content, 'html.parser')
-        stocks = soup.find_all('div', class_="spec-wrapper")
+        stocks = soup.find_all('div', class_='spec-wrapper')
         for stock in stocks:
-            stock_status = stock.find('div', class_='stock hidden-xs hidden-sm nospesh')
+            stock_status = stock.find('div', class_='stock')
             if stock_status:
                 in_stock = stock_status.get_text(strip=True)
                 if in_stock == 'В наявності':
                     return '+'
-                else:
-                    return '-'
+                elif in_stock == 'Закінчується':
+                    return '+'
+        return '-'
 
     def read_product_data(self, links_list: list):
         """
@@ -210,7 +211,7 @@ class Data_parsing:
                 list_of_product_data.append(self.get_product_article(content))
 
                 # getting a product stock status
-                list_of_product_data.append((self.get_product_in_stock(content)))
+                list_of_product_data.append(self.get_product_in_stock(content))
 
                 list_of_products_data.append(list_of_product_data)
         return list_of_products_data
