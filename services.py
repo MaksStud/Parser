@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
+import data
 
 
 class Data_parsing:
@@ -9,6 +10,13 @@ class Data_parsing:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         }
+
+    @staticmethod
+    def what_language_url(url):
+        if 'https://1-m.com.ua/ua/' in url:
+            return 'ukr'
+        else:
+            return 'russ'
 
     @staticmethod
     def reading_the_number_of_pages(content: str) -> int:
@@ -154,7 +162,8 @@ class Data_parsing:
             return descriptions_text
 
     @staticmethod
-    def get_product_article(content: str) -> int:
+    def get_product_article(content: str, url: str) -> int:
+        dp = Data_parsing
         '''
         :param content: The text that returned the request
         :return: number from the product article
@@ -162,7 +171,11 @@ class Data_parsing:
         soup = BeautifulSoup(content, 'html.parser')
         articles = soup.find_all('div', class_="model")
         for art in articles:
-            return int(art.get_text().replace('Артикул:', ''))
+            if Data_parsing.what_language_url(url) == 'ukr':
+                return int(art.get_text().replace('Артикул:', ''))
+            elif Data_parsing.what_language_url(url) == 'russ':
+                return int(art.get_text().replace('Артикул:', ''))
+
 
     @staticmethod
     def get_product_in_stock(content: str) -> str:
@@ -177,9 +190,7 @@ class Data_parsing:
             stock_status = stock.find('div', class_='stock')
             if stock_status:
                 in_stock = stock_status.get_text(strip=True)
-                if in_stock == 'В наявності':
-                    return '+'
-                elif in_stock == 'Закінчується':
+                if in_stock in data.in_stock_list:
                     return '+'
         return '-'
 
