@@ -1,17 +1,21 @@
 import tkinter as tk
 from tkinter import messagebox as mb
+import services
 from services import Write_in_exel, Data_parsing
 import threading
 
 
 def parsing(url_text, ):
+    d_urls = services.Convert_url()
+    convert_url = d_urls.double_link(url_text)
+
     parser = Data_parsing()
 
     if checkbox_var.get():
-        url_subpages_list = parser.link_to_all_pages(url_text)
+        url_subpages_list = parser.link_to_all_pages(convert_url.get('russ'))
         links_to_products = parser.links_to_products_from_all_pages(url_subpages_list)
     else:
-        links_to_products = parser.links_to_products(url_text)
+        links_to_products = parser.links_to_products(convert_url.get('russ'))
 
     product_data = parser.read_product_data(links_to_products)
     Write_in_exel.write(product_data)
@@ -32,7 +36,7 @@ def start():
 
 root = tk.Tk()
 root.title("Парсер")
-root.geometry("380x170+550+200")
+root.geometry("380x170+590+350")
 root.resizable(width=False, height=False)
 
 

@@ -172,7 +172,6 @@ class Data_parsing:
         for art in articles:
             return int(art.get_text().replace('Артикул:', ''))
 
-
     @staticmethod
     def get_product_in_stock(content: str) -> str:
         '''
@@ -190,6 +189,24 @@ class Data_parsing:
                     return '+'
         return '-'
 
+    @staticmethod
+    def get_product_group_id(name: str) -> int:
+        return data.groups_id.get(name)
+
+    @staticmethod
+    def get_product_group(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        groups_name = soup.find_all('ul', class_="breadcrumb")
+        for group in groups_name:
+            return group.text.split('\n')[-2]
+
+    @staticmethod
+    def get_search_queries(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        groups_list = soup.find_all('ul', class_="breadcrumb")
+        for i in groups_list:
+            return i.text.replace('\n', ', ')[4::]
+
     def read_product_data(self, links_list: list):
         """
         :param links_list: List of links to products
@@ -198,27 +215,51 @@ class Data_parsing:
         list_of_products_data = []
         for i in links_list:
             list_of_product_data = []
-            request = requests.get(i, headers=self.headers)
-            if request.status_code == 200:
-                content = request.text
+            convert_url = Convert_url()
+            links = convert_url.double_link(i)
 
-                # getting a product name
-                list_of_product_data.append(self.get_product_name(content))
+            request_russ = requests.get(links['russ'], headers=self.headers)
+            request_ua = requests.get(links['ua'], headers=self.headers)
+
+            if request_russ.status_code == 200 and request_ua.status_code == 200:
+                content_russ = request_russ.text
+                content_ua = request_ua.text
+
+                # getting a product russ name
+                list_of_product_data.append(self.get_product_name(content_russ))
+
+                # getting a product ua name
+                list_of_product_data.append(self.get_product_name(content_ua))
+
+                # getting a product search queries russ
+                list_of_product_data.append(self.get_search_queries(content_russ))
+
+                # getting a product search queries ua
+                list_of_product_data.append(self.get_search_queries(content_ua))
 
                 # getting the price of the product
-                list_of_product_data.append(self.get_product_price(content))
+                list_of_product_data.append(self.get_product_price(content_russ))
 
                 # getting a link to a product photo
-                list_of_product_data.append(self.get_product_photo(content))
+                list_of_product_data.append(self.get_product_photo(content_russ))
 
-                # getting a product description
-                list_of_product_data.append(self.get_product_description(content))
+                # getting a product russ description
+                list_of_product_data.append(self.get_product_description(content_russ))
+
+                # getting a product ua description
+                list_of_product_data.append(self.get_product_description(content_ua))
 
                 # getting a product article
-                list_of_product_data.append(self.get_product_article(content))
+                list_of_product_data.append(self.get_product_article(content_russ))
 
                 # getting a product stock status
-                list_of_product_data.append(self.get_product_in_stock(content))
+                list_of_product_data.append(self.get_product_in_stock(content_russ))
+
+                # getting a product group
+                group_name = self.get_product_group(content_russ)
+                list_of_product_data.append(group_name)
+
+                list_of_product_data.append(self.get_product_group_id(group_name))
 
                 list_of_products_data.append(list_of_product_data)
         return list_of_products_data
@@ -237,23 +278,35 @@ class Write_in_exel:
         data_matrix = np.transpose(data_matrix)
         data = {
             "Назва_позиції": data_matrix[0],
-            "Назва_позиції_укр": [],
-            "Пошукові_запити": [],
-            "Пошукові_запити_укр": [],
-            "Опис": data_matrix[3],
-            "Опис_укр": [],
+            "Назва_позиції_укр": data_matrix[1],
+            "Пошукові_запити": data_matrix[2],
+            "Пошукові_запити_укр": data_matrix[3],
+            "Опис": data_matrix[6],
+            "Опис_укр": data_matrix[7],
             "Тип_товару": ['r' for _ in range(len(data_matrix[0]))],
-            "Ціна": data_matrix[1],
+            "Ціна": data_matrix[4],
             "Валюта": ['UAH' for _ in range(len(data_matrix[0]))],
             "Одиниця_виміру": ['шт.' for _ in range(len(data_matrix[0]))],
-            "Посилання_зображення": data_matrix[2],
-            "Наявність": data_matrix[5],
-            "Номер_групи": [],
-            "Назва_групи": [],
-            "Ідентифікатор_товару": data_matrix[4],
+            "Посилання_зображення": data_matrix[5],
+            "Наявність": data_matrix[9],
+            "Номер_групи": data_matrix[11],
+            "Назва_групи": data_matrix[10],
+            "Ідентифікатор_товару": data_matrix[8],
         }
-
         df = pd.DataFrame(data)
 
         with pd.ExcelWriter("Export_Products.xlsx", engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
+class Convert_url:
+
+    @staticmethod
+    def double_link(url) -> dict:
+        if '/ua/' in url:
+            russ_url = url.replace("https://1-m.com.ua/ua/", "https://1-m.com.ua/", 1)
+            return {'russ': russ_url, 'ua': url}
+        else:
+            ua_url = url.replace("https://1-m.com.ua/", "https://1-m.com.ua/ua/", 1)
+            return {'russ': url, 'ua': ua_url}
+
