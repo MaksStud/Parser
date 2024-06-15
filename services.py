@@ -162,8 +162,7 @@ class Data_parsing:
             return descriptions_text
 
     @staticmethod
-    def get_product_article(content: str, url: str) -> int:
-        dp = Data_parsing
+    def get_product_article(content: str) -> int:
         '''
         :param content: The text that returned the request
         :return: number from the product article
@@ -171,10 +170,7 @@ class Data_parsing:
         soup = BeautifulSoup(content, 'html.parser')
         articles = soup.find_all('div', class_="model")
         for art in articles:
-            if Data_parsing.what_language_url(url) == 'ukr':
-                return int(art.get_text().replace('Артикул:', ''))
-            elif Data_parsing.what_language_url(url) == 'russ':
-                return int(art.get_text().replace('Артикул:', ''))
+            return int(art.get_text().replace('Артикул:', ''))
 
 
     @staticmethod
@@ -241,13 +237,19 @@ class Write_in_exel:
         data_matrix = np.transpose(data_matrix)
         data = {
             "Назва_позиції": data_matrix[0],
+            "Назва_позиції_укр": [],
+            "Пошукові_запити": [],
+            "Пошукові_запити_укр": [],
             "Опис": data_matrix[3],
+            "Опис_укр": [],
             "Тип_товару": ['r' for _ in range(len(data_matrix[0]))],
             "Ціна": data_matrix[1],
             "Валюта": ['UAH' for _ in range(len(data_matrix[0]))],
             "Одиниця_виміру": ['шт.' for _ in range(len(data_matrix[0]))],
             "Посилання_зображення": data_matrix[2],
             "Наявність": data_matrix[5],
+            "Номер_групи": [],
+            "Назва_групи": [],
             "Ідентифікатор_товару": data_matrix[4],
         }
 
