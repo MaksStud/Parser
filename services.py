@@ -137,16 +137,18 @@ class Data_parsing:
                 return float(price_value)
 
     @staticmethod
-    def get_product_photo(content: str) -> str:
+    def get_product_photos(content: str) -> str:
         """
-        :param content: The text that returned the request
-        :return: a string with a link to a product photo
+        :param content: The HTML content as a string
+        :return: a list of strings with links to product photos
         """
         soup = BeautifulSoup(content, 'html.parser')
-        imgs = soup.find_all('img', class_="img-responsive", id="ProductPhotoImg")
-        for img in imgs:
-            img_url = img['src']
-            return img_url
+        links = []
+        for a in soup.find_all('a', class_='fancy-prod el zoom data-fancybox-images'):
+            href = a.get('href')
+            if href:
+                links.append(href)
+        return ' '.join(links)
 
     @staticmethod
     def get_product_description(content: str) -> str:
@@ -207,6 +209,15 @@ class Data_parsing:
         for i in groups_list:
             return i.text.replace('\n', ', ')[4::]
 
+    @staticmethod
+    def get_product_characteristics(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        characteristics = soup.find_all('div', class_="prod-description-wrap")
+
+        for i in characteristics:
+            str_list = i.get_text(strip=True, separator='#').split('#')[1:-1]
+            return '\n'.join(str_list)
+
     def read_product_data(self, links_list: list):
         """
         :param links_list: List of links to products
@@ -241,7 +252,7 @@ class Data_parsing:
                 list_of_product_data.append(self.get_product_price(content_russ))
 
                 # getting a link to a product photo
-                list_of_product_data.append(self.get_product_photo(content_russ))
+                list_of_product_data.append(self.get_product_photos(content_russ))
 
                 # getting a product russ description
                 list_of_product_data.append(self.get_product_description(content_russ))
@@ -259,9 +270,14 @@ class Data_parsing:
                 group_name = self.get_product_group(content_russ)
                 list_of_product_data.append(group_name)
 
+                # getting a product id group
                 list_of_product_data.append(self.get_product_group_id(group_name))
 
+                # getting a product characteristic
+                list_of_product_data.append(self.get_product_characteristics(content_russ))
+
                 list_of_products_data.append(list_of_product_data)
+
         return list_of_products_data
 
 
@@ -292,6 +308,7 @@ class Write_in_exel:
             "Номер_групи": data_matrix[11],
             "Назва_групи": data_matrix[10],
             "Ідентифікатор_товару": data_matrix[8],
+            "Назва_Характеристики": data_matrix[12]
         }
         df = pd.DataFrame(data)
 
@@ -310,3 +327,10 @@ class Convert_url:
             ua_url = url.replace("https://1-m.com.ua/", "https://1-m.com.ua/ua/", 1)
             return {'russ': url, 'ua': ua_url}
 
+
+# a = Data_parsing()
+#
+# request_russ = requests.get('https://1-m.com.ua/avtonomnaya-akusticheskaya-sistema-tmg-original-6828-03-mp3usbfmbt/',
+#                             headers=a.headers)
+# b = a.get_product_photos(request_russ.text)
+# print(b)
