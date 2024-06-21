@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
+import data
 
 
 class Data_parsing:
@@ -9,6 +10,13 @@ class Data_parsing:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         }
+
+    @staticmethod
+    def what_language_url(url):
+        if 'https://1-m.com.ua/ua/' in url:
+            return 'ukr'
+        else:
+            return 'russ'
 
     @staticmethod
     def reading_the_number_of_pages(content: str) -> int:
@@ -129,16 +137,18 @@ class Data_parsing:
                 return float(price_value)
 
     @staticmethod
-    def get_product_photo(content: str) -> str:
+    def get_product_photos(content: str) -> str:
         """
-        :param content: The text that returned the request
-        :return: a string with a link to a product photo
+        :param content: The HTML content as a string
+        :return: a list of strings with links to product photos
         """
         soup = BeautifulSoup(content, 'html.parser')
-        imgs = soup.find_all('img', class_="img-responsive", id="ProductPhotoImg")
-        for img in imgs:
-            img_url = img['src']
-            return img_url
+        links = []
+        for a in soup.find_all('a', class_='fancy-prod el zoom data-fancybox-images'):
+            href = a.get('href')
+            if href:
+                links.append(href)
+        return ' '.join(links)
 
     @staticmethod
     def get_product_description(content: str) -> str:
@@ -177,11 +187,36 @@ class Data_parsing:
             stock_status = stock.find('div', class_='stock')
             if stock_status:
                 in_stock = stock_status.get_text(strip=True)
-                if in_stock == 'В наявності':
-                    return '+'
-                elif in_stock == 'Закінчується':
+                if in_stock in data.in_stock_list:
                     return '+'
         return '-'
+
+    @staticmethod
+    def get_product_group_id(name: str) -> int:
+        return data.groups_id.get(name)
+
+    @staticmethod
+    def get_product_group(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        groups_name = soup.find_all('ul', class_="breadcrumb")
+        for group in groups_name:
+            return group.text.split('\n')[-2]
+
+    @staticmethod
+    def get_search_queries(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        groups_list = soup.find_all('ul', class_="breadcrumb")
+        for i in groups_list:
+            return i.text.replace('\n', ', ')[4::]
+
+    @staticmethod
+    def get_product_characteristics(content: str) -> str:
+        soup = BeautifulSoup(content, 'html.parser')
+        characteristics = soup.find_all('div', class_="prod-description-wrap")
+
+        for i in characteristics:
+            str_list = i.get_text(strip=True, separator='#').split('#')[1:-1]
+            return '\n'.join(str_list)
 
     def read_product_data(self, links_list: list):
         """
@@ -191,29 +226,58 @@ class Data_parsing:
         list_of_products_data = []
         for i in links_list:
             list_of_product_data = []
-            request = requests.get(i, headers=self.headers)
-            if request.status_code == 200:
-                content = request.text
+            convert_url = Convert_url()
+            links = convert_url.double_link(i)
 
-                # getting a product name
-                list_of_product_data.append(self.get_product_name(content))
+            request_russ = requests.get(links['russ'], headers=self.headers)
+            request_ua = requests.get(links['ua'], headers=self.headers)
+
+            if request_russ.status_code == 200 and request_ua.status_code == 200:
+                content_russ = request_russ.text
+                content_ua = request_ua.text
+
+                # getting a product russ name
+                list_of_product_data.append(self.get_product_name(content_russ))
+
+                # getting a product ua name
+                list_of_product_data.append(self.get_product_name(content_ua))
+
+                # getting a product search queries russ
+                list_of_product_data.append(self.get_search_queries(content_russ))
+
+                # getting a product search queries ua
+                list_of_product_data.append(self.get_search_queries(content_ua))
 
                 # getting the price of the product
-                list_of_product_data.append(self.get_product_price(content))
+                list_of_product_data.append(self.get_product_price(content_russ))
 
                 # getting a link to a product photo
-                list_of_product_data.append(self.get_product_photo(content))
+                list_of_product_data.append(self.get_product_photos(content_russ))
 
-                # getting a product description
-                list_of_product_data.append(self.get_product_description(content))
+                # getting a product russ description
+                list_of_product_data.append(self.get_product_description(content_russ))
+
+                # getting a product ua description
+                list_of_product_data.append(self.get_product_description(content_ua))
 
                 # getting a product article
-                list_of_product_data.append(self.get_product_article(content))
+                list_of_product_data.append(self.get_product_article(content_russ))
 
                 # getting a product stock status
-                list_of_product_data.append(self.get_product_in_stock(content))
+                list_of_product_data.append(self.get_product_in_stock(content_russ))
+
+                # getting a product group
+                group_name = self.get_product_group(content_russ)
+                list_of_product_data.append(group_name)
+
+                # getting a product id group
+                list_of_product_data.append(self.get_product_group_id(group_name))
+
+                # getting a product characteristic
+                list_of_product_data.append(self.get_product_characteristics(content_russ))
 
                 list_of_products_data.append(list_of_product_data)
+
         return list_of_products_data
 
 
@@ -230,17 +294,43 @@ class Write_in_exel:
         data_matrix = np.transpose(data_matrix)
         data = {
             "Назва_позиції": data_matrix[0],
-            "Опис": data_matrix[3],
+            "Назва_позиції_укр": data_matrix[1],
+            "Пошукові_запити": data_matrix[2],
+            "Пошукові_запити_укр": data_matrix[3],
+            "Опис": data_matrix[6],
+            "Опис_укр": data_matrix[7],
             "Тип_товару": ['r' for _ in range(len(data_matrix[0]))],
-            "Ціна": data_matrix[1],
+            "Ціна": data_matrix[4],
             "Валюта": ['UAH' for _ in range(len(data_matrix[0]))],
             "Одиниця_виміру": ['шт.' for _ in range(len(data_matrix[0]))],
-            "Посилання_зображення": data_matrix[2],
-            "Наявність": data_matrix[5],
-            "Ідентифікатор_товару": data_matrix[4],
+            "Посилання_зображення": data_matrix[5],
+            "Наявність": data_matrix[9],
+            "Номер_групи": data_matrix[11],
+            "Назва_групи": data_matrix[10],
+            "Ідентифікатор_товару": data_matrix[8],
+            "Назва_Характеристики": data_matrix[12]
         }
-
         df = pd.DataFrame(data)
 
         with pd.ExcelWriter("Export_Products.xlsx", engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
+class Convert_url:
+
+    @staticmethod
+    def double_link(url) -> dict:
+        if '/ua/' in url:
+            russ_url = url.replace("https://1-m.com.ua/ua/", "https://1-m.com.ua/", 1)
+            return {'russ': russ_url, 'ua': url}
+        else:
+            ua_url = url.replace("https://1-m.com.ua/", "https://1-m.com.ua/ua/", 1)
+            return {'russ': url, 'ua': ua_url}
+
+
+# a = Data_parsing()
+#
+# request_russ = requests.get('https://1-m.com.ua/avtonomnaya-akusticheskaya-sistema-tmg-original-6828-03-mp3usbfmbt/',
+#                             headers=a.headers)
+# b = a.get_product_photos(request_russ.text)
+# print(b)
