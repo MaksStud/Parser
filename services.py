@@ -326,11 +326,3 @@ class Convert_url:
         else:
             ua_url = url.replace("https://1-m.com.ua/", "https://1-m.com.ua/ua/", 1)
             return {'russ': url, 'ua': ua_url}
-
-
-# a = Data_parsing()
-#
-# request_russ = requests.get('https://1-m.com.ua/avtonomnaya-akusticheskaya-sistema-tmg-original-6828-03-mp3usbfmbt/',
-#                             headers=a.headers)
-# b = a.get_product_photos(request_russ.text)
-# print(b)
